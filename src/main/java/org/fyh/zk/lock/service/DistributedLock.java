@@ -103,7 +103,8 @@ public class DistributedLock implements Lock, Watcher {
 		if (this.countDownLatch != null) {
 			this.countDownLatch.countDown();
 		}
-		// 是否已经连接
+		//是否已经连接
+		//添加一个zk已连接的事件监听，避免zktcp未连接导致节点创建不成功报错：KeeperErrorCode = NodeExists for /locks
 		if (event.getState() == KeeperState.SyncConnected) {
 			connectedCountDownLatch.countDown();
 			log.info("zk已连接。。。");
