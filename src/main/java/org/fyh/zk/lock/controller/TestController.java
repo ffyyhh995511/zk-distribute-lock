@@ -5,7 +5,13 @@ import javax.annotation.Resource;
 import org.fyh.zk.lock.service.GoodsService;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+/**
+ * 
+ * @Description:测试
+ * @author:fangyunhe
+ * @time:2018年6月4日 上午10:42:12
+ * @version 1.0
+ */
 @RestController
 @RequestMapping("/user")
 public class TestController {
