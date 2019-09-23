@@ -220,6 +220,11 @@ public class DistributedLock implements Lock, Watcher {
 
 	}
 
+	/**
+	 * 删除临时节点（客户端断开连接也会删除临时节点）
+	 * @author:fangyunhe
+	 * @time:2018年5月14日 下午7:41:29
+	 */
 	@Override
 	public void unlock() {
 		try {
