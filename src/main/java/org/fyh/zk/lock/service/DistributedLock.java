@@ -66,7 +66,7 @@ public class DistributedLock implements Lock, Watcher {
 	 */
 	private String division = "/";
 
-	private int sessionTimeout = 30000;
+	private int sessionTimeout = 10000;
 
 	public DistributedLock(String config, String lockName) throws Exception {
 		this.lockName = lockName;
@@ -107,10 +107,16 @@ public class DistributedLock implements Lock, Watcher {
 		//添加一个zk已连接的事件监听，避免zktcp未连接导致节点创建不成功报错：KeeperErrorCode = NodeExists for /locks
 		if (event.getState() == KeeperState.SyncConnected) {
 			connectedCountDownLatch.countDown();
-			log.info("zk已连接。。。");
+			//zk已连接
+			log.info("zk connected");
 		}
 	}
-
+	
+	/**
+	 * 获取锁，若不能获取线程就一直等待直到获取锁
+	 * @author:fangyunhe
+	 * @time:2018年5月14日 下午7:36:27
+	 */
 	@Override
 	public void lock() {
 		try {
@@ -119,7 +125,7 @@ public class DistributedLock implements Lock, Watcher {
 				return;
 			} else {
 				// 等待锁
-				waitForLock(waitLock, sessionTimeout);
+				waitForLock(waitLock);
 			}
 		} catch (InterruptedException e) {
 			log.error(e.getMessage(), e);
@@ -127,7 +133,13 @@ public class DistributedLock implements Lock, Watcher {
 			log.error(e.getMessage(), e);
 		}
 	}
-
+	
+	/**
+	 * 获取锁，立马返回成功与否
+	 * @return true 获取锁成功 false 反之
+	 * @author:fangyunhe
+	 * @time:2018年5月14日 下午7:36:27
+	 */
 	@Override
 	public boolean tryLock() {
 		try {
@@ -136,8 +148,7 @@ public class DistributedLock implements Lock, Watcher {
 				throw new Exception("锁名有误");
 			}
 			// 创建临时有序节点
-			currentLock = zk.create(rootLock + "/" + lockName + splitStr, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE,
-					CreateMode.EPHEMERAL_SEQUENTIAL);
+			currentLock = zk.create(rootLock + division + lockName + splitStr, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
 			if (currentLock != null) {
 				log.info(currentLock + " 已经创建");
 			} else {
@@ -172,14 +183,20 @@ public class DistributedLock implements Lock, Watcher {
 		}
 		return false;
 	}
-
+	
+	/**
+	 * 获取锁，并等待超时时间
+	 * @return true 获取锁成功 false 反之
+	 * @author:fangyunhe
+	 * @time:2018年5月14日 下午7:36:27
+	 */
 	@Override
 	public boolean tryLock(long timeout, TimeUnit unit) {
 		try {
 			if (this.tryLock()) {
 				return true;
 			}
-			return waitForLock(waitLock, timeout);
+			return waitForLock(waitLock, timeout, unit);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
@@ -197,17 +214,32 @@ public class DistributedLock implements Lock, Watcher {
 	 * @author:fangyunhe
 	 * @time:2018年5月14日 下午7:41:29
 	 */
-	private boolean waitForLock(String prev, long waitTime) throws KeeperException, InterruptedException {
-		Stat stat = zk.exists(rootLock + "/" + prev, true);
+	private boolean waitForLock(String prev, long waitTime, TimeUnit unit) throws KeeperException, InterruptedException {
+		Stat stat = zk.exists(rootLock + division + prev, true);
 		if (stat != null) {
-			log.info(Thread.currentThread().getName() + "等待锁 " + rootLock + "/" + prev);
+			log.info(Thread.currentThread().getName() + "等待锁 " + rootLock + division + prev);
 			this.countDownLatch = new CountDownLatch(1);
 			// 计数等待，若等到前一个节点消失，则precess中进行countDown，停止等待，获取锁
-			this.countDownLatch.await(waitTime, TimeUnit.MILLISECONDS);
+			boolean awaitStatus = this.countDownLatch.await(waitTime, unit);
+			this.countDownLatch = null;
+			if(awaitStatus) {
+				log.info(Thread.currentThread().getName() + " 等到了锁");
+			}
+			return awaitStatus;
+		}
+		return true;
+	}
+	
+	private void waitForLock(String prev) throws KeeperException, InterruptedException {
+		Stat stat = zk.exists(rootLock + division + prev, true);
+		if (stat != null) {
+			log.info(Thread.currentThread().getName() + "等待锁 " + rootLock + division + prev);
+			this.countDownLatch = new CountDownLatch(1);
+			// 计数等待，若等到前一个节点消失，则precess中进行countDown，停止等待，获取锁
+			this.countDownLatch.await();
 			this.countDownLatch = null;
 			log.info(Thread.currentThread().getName() + " 等到了锁");
 		}
-		return true;
 	}
 
 	@Override
