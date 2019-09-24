@@ -204,7 +204,8 @@ public class DistributedLock implements Lock, Watcher {
 	}
 
 	/**
-	 * 等待锁
+	 * 等待锁,返回锁的状态true或false
+	 * 栅栏等待超时也返回true或false
 	 * 
 	 * @param prev
 	 * @param waitTime
@@ -230,6 +231,17 @@ public class DistributedLock implements Lock, Watcher {
 		return true;
 	}
 	
+	/**
+	 * 等待锁，线程挂起直到栅栏计数是0
+	 * 
+	 * @param prev
+	 * @param waitTime
+	 * @return
+	 * @throws KeeperException
+	 * @throws InterruptedException
+	 * @author:fangyunhe
+	 * @time:2018年5月14日 下午7:41:29
+	 */
 	private void waitForLock(String prev) throws KeeperException, InterruptedException {
 		Stat stat = zk.exists(rootLock + division + prev, true);
 		if (stat != null) {
