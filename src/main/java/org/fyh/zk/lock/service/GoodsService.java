@@ -21,7 +21,7 @@ public class GoodsService {
 	private PurchaseHistoryMapper purchaseHistoryMapper;
 
 	public int distributeShopping() throws Exception {
-		DistributedLock lock = new DistributedLock("127.0.0.1:2181", "test1");
+		DistributedLock lock = new DistributedLock("127.0.0.1:2181", "childNode");
 		lock.lock();
 		processPurchaseHistory();
 		lock.unlock();
